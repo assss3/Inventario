@@ -44,11 +44,23 @@ export default function InventarioModelo() {
   const [paresIngreso, setParesIngreso] = useState<{talle: number, cantidad: number}[]>(
     Array.from({ length: 25 }, (_, i) => ({ talle: i + 20, cantidad: 0 }))
   )
+  const [depositoIngreso, setDepositoIngreso] = useState<number | null>(null)
   const [parSeleccionado, setParSeleccionado] = useState<Par | null>(null)
+  const [paresSeleccionados, setParesSeleccionados] = useState<number[]>([])
+  const [modoMultiSeleccion, setModoMultiSeleccion] = useState(false)
   const [depositos, setDepositos] = useState<Deposito[]>([])
   const [clientes, setClientes] = useState<{ id: number; nombre: string }[]>([])
   const [filtroDeposito, setFiltroDeposito] = useState<number | null>(null)
   const [filtroCliente, setFiltroCliente] = useState<number | null>(null)
+  const [userRole, setUserRole] = useState<string>('')
+
+  useEffect(() => {
+    const user = localStorage.getItem('user')
+    if (user) {
+      const userData = JSON.parse(user)
+      setUserRole(userData.role)
+    }
+  }, [])
 
   useEffect(() => {
     fetchIngresos()
@@ -89,18 +101,27 @@ export default function InventarioModelo() {
 
   const registrarIngreso = async () => {
     const paresConCantidad = paresIngreso.filter(par => par.cantidad > 0)
-    if (paresConCantidad.length > 0) {
-      await fetch('/api/ingresos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          modeloId: parseInt(modeloId),
-          pares: paresConCantidad
-        })
-      })
-      setParesIngreso(Array.from({ length: 25 }, (_, i) => ({ talle: i + 20, cantidad: 0 })))
-      fetchIngresos()
+    if (paresConCantidad.length === 0) {
+      alert('Debe ingresar al menos un par')
+      return
     }
+    if (!depositoIngreso) {
+      alert('Debe seleccionar un depósito')
+      return
+    }
+    
+    await fetch('/api/ingresos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        modeloId: parseInt(modeloId),
+        pares: paresConCantidad,
+        depositoId: depositoIngreso
+      })
+    })
+    setParesIngreso(Array.from({ length: 25 }, (_, i) => ({ talle: i + 20, cantidad: 0 })))
+    setDepositoIngreso(null)
+    fetchIngresos()
   }
 
   const actualizarPar = async (parId: number, datos: Partial<Par>) => {
@@ -111,6 +132,34 @@ export default function InventarioModelo() {
     })
     fetchIngresos()
     setParSeleccionado(null)
+  }
+
+  const actualizarParesSeleccionados = async (depositoId: number) => {
+    if (paresSeleccionados.length === 0) return
+    
+    await Promise.all(
+      paresSeleccionados.map(parId => 
+        fetch(`/api/pares/${parId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ depositoId })
+        })
+      )
+    )
+    
+    fetchIngresos()
+    setParesSeleccionados([])
+    setModoMultiSeleccion(false)
+  }
+
+  const toggleSeleccionPar = (parId: number) => {
+    if (!modoMultiSeleccion) return
+    
+    setParesSeleccionados(prev => 
+      prev.includes(parId) 
+        ? prev.filter(id => id !== parId)
+        : [...prev, parId]
+    )
   }
 
   const procesarDevolucion = async (parId: number) => {
@@ -196,60 +245,117 @@ export default function InventarioModelo() {
         )}
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium mb-4">Registrar Nuevo Ingreso</h2>
-        
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          {paresIngreso.map(par => (
-            <div key={par.talle} className="flex flex-col items-center">
-              <label className="text-sm font-medium mb-1">Talle {par.talle}</label>
-              <input
-                type="number"
-                min="0"
-                value={par.cantidad}
-                onChange={(e) => actualizarCantidad(par.talle, parseInt(e.target.value) || 0)}
-                className="w-16 text-center border rounded px-2 py-1"
-              />
-            </div>
-          ))}
-        </div>
-        
-        <button
-          onClick={registrarIngreso}
-          className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
-        >
-          Registrar Ingreso
-        </button>
-      </div>
-
-      {/* Filtros */}
-      <div className="bg-white shadow rounded-lg p-4">
-        <div className="flex gap-4 items-center flex-wrap">
-          <div className="flex gap-2 items-center">
-            <label className="font-medium">Depósito:</label>
+      {userRole === 'admin' && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium mb-4">Registrar Nuevo Ingreso</h2>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Depósito *</label>
             <select
-              value={filtroDeposito || ''}
-              onChange={(e) => setFiltroDeposito(e.target.value ? parseInt(e.target.value) : null)}
+              value={depositoIngreso || ''}
+              onChange={(e) => setDepositoIngreso(e.target.value ? parseInt(e.target.value) : null)}
               className="border rounded px-3 py-2"
+              required
             >
-              <option value="">Todos</option>
+              <option value="">Seleccionar depósito</option>
               {depositos.map(deposito => (
                 <option key={deposito.id} value={deposito.id}>{deposito.nombre}</option>
               ))}
             </select>
           </div>
+          
+          <div className="grid grid-cols-5 gap-4 mb-6">
+            {paresIngreso.map(par => (
+              <div key={par.talle} className="flex flex-col items-center">
+                <label className="text-sm font-medium mb-1">Talle {par.talle}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={par.cantidad}
+                  onChange={(e) => actualizarCantidad(par.talle, parseInt(e.target.value) || 0)}
+                  className="w-16 text-center border rounded px-2 py-1"
+                />
+              </div>
+            ))}
+          </div>
+          
+          <button
+            onClick={registrarIngreso}
+            className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600"
+          >
+            Registrar Ingreso
+          </button>
+        </div>
+      )}
+
+      {/* Filtros y Multi-selección */}
+      <div className="bg-white shadow rounded-lg p-4">
+        <div className="flex gap-4 items-center flex-wrap justify-between">
+          <div className="flex gap-4 items-center flex-wrap">
+            <div className="flex gap-2 items-center">
+              <label className="font-medium">Depósito:</label>
+              <select
+                value={filtroDeposito || ''}
+                onChange={(e) => setFiltroDeposito(e.target.value ? parseInt(e.target.value) : null)}
+                className="border rounded px-3 py-2"
+              >
+                <option value="">Todos</option>
+                {depositos.map(deposito => (
+                  <option key={deposito.id} value={deposito.id}>{deposito.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 items-center">
+              <label className="font-medium">Cliente:</label>
+              <select
+                value={filtroCliente || ''}
+                onChange={(e) => setFiltroCliente(e.target.value ? parseInt(e.target.value) : null)}
+                className="border rounded px-3 py-2"
+              >
+                <option value="">Todos</option>
+                {clientes.map(cliente => (
+                  <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
           <div className="flex gap-2 items-center">
-            <label className="font-medium">Cliente:</label>
-            <select
-              value={filtroCliente || ''}
-              onChange={(e) => setFiltroCliente(e.target.value ? parseInt(e.target.value) : null)}
-              className="border rounded px-3 py-2"
+            <button
+              onClick={() => {
+                setModoMultiSeleccion(!modoMultiSeleccion)
+                setParesSeleccionados([])
+              }}
+              className={`px-4 py-2 rounded text-sm ${
+                modoMultiSeleccion 
+                  ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
             >
-              <option value="">Todos</option>
-              {clientes.map(cliente => (
-                <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>
-              ))}
-            </select>
+              {modoMultiSeleccion ? 'Cancelar selección' : 'Selección múltiple'}
+            </button>
+            
+            {modoMultiSeleccion && paresSeleccionados.length > 0 && (
+              <div className="flex gap-2 items-center">
+                <span className="text-sm text-gray-600">
+                  {paresSeleccionados.length} seleccionados
+                </span>
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      actualizarParesSeleccionados(parseInt(e.target.value))
+                    }
+                  }}
+                  className="border rounded px-3 py-2 text-sm"
+                  defaultValue=""
+                >
+                  <option value="">Mover a depósito...</option>
+                  {depositos.map(deposito => (
+                    <option key={deposito.id} value={deposito.id}>{deposito.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -261,27 +367,32 @@ export default function InventarioModelo() {
               <h3 className="text-lg font-medium">
                 Ingreso del {new Date(ingreso.fechaIngreso).toLocaleDateString()}
               </h3>
-              <button
-                onClick={() => eliminarIngreso(
-                  ingreso.id, 
-                  new Date(ingreso.fechaIngreso).toLocaleDateString(),
-                  ingreso.pares.length
-                )}
-                className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
-              >
-                Eliminar Ingreso
-              </button>
+              {userRole === 'admin' && (
+                <button
+                  onClick={() => eliminarIngreso(
+                    ingreso.id, 
+                    new Date(ingreso.fechaIngreso).toLocaleDateString(),
+                    ingreso.pares.length
+                  )}
+                  className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                >
+                  Eliminar Ingreso
+                </button>
+              )}
             </div>
             
             <div className="grid-container">
               {ordenarPares(ingreso.pares).map(par => (
                 <div
                   key={par.id}
-                  className={getParClass(par)}
-                  onClick={() => setParSeleccionado(par)}
+                  className={`${getParClass(par)} ${modoMultiSeleccion && paresSeleccionados.includes(par.id) ? 'ring-2 ring-blue-500' : ''}`}
+                  onClick={() => modoMultiSeleccion ? toggleSeleccionPar(par.id) : setParSeleccionado(par)}
                   title={`Talle ${par.talle} - ${par.deposito.nombre} - ${par.disponible ? 'Disponible' : 'No disponible'} - ${par.pagado}${par.pagado === 'Parcial' && par.montoTotal && par.montoPagado ? ` (Pagado: $${Number(par.montoPagado).toFixed(2)} de $${Number(par.montoTotal).toFixed(2)})` : ''}${par.comprador ? ` - ${par.comprador}` : ''}`}
                 >
-                  <div className="text-center w-full">
+                  <div className="text-center w-full relative">
+                    {modoMultiSeleccion && paresSeleccionados.includes(par.id) && (
+                      <div className="absolute top-0 right-0 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">✓</div>
+                    )}
                     <div className="font-bold text-sm">{par.talle}</div>
                     {par.pagado === 'Parcial' && (
                       <div className="text-xs mt-1 w-full overflow-hidden">
