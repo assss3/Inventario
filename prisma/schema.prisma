@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Marca {
+  id       Int      @id @default(autoincrement())
+  nombre   String   @unique
+  modelos  Modelo[]
+  
+  @@map("marcas")
+}
+
+model Modelo {
+  id       Int       @id @default(autoincrement())
+  nombre   String
+  marcaId  Int
+  marca    Marca     @relation(fields: [marcaId], references: [id])
+  ingresos Ingreso[]
+  
+  @@unique([nombre, marcaId])
+  @@map("modelos")
+}
+
+model Ingreso {
+  id           Int      @id @default(autoincrement())
+  modeloId     Int
+  fechaIngreso DateTime @default(now())
+  modelo       Modelo   @relation(fields: [modeloId], references: [id])
+  pares        Par[]
+  
+  @@map("ingresos")
+}
+
+model Cliente {
+  id       Int    @id @default(autoincrement())
+  nombre   String
+  telefono String?
+  email    String?
+  pares    Par[]
+  
+  @@map("clientes")
+}
+
+model Deposito {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+  pares  Par[]
+  
+  @@map("depositos")
+}
+
+model Retiro {
+  id          Int      @id @default(autoincrement())
+  fechaRetiro DateTime @default(now())
+  montoTotal  Decimal  @db.Decimal(10, 2)
+  detalle     String
+  pares       ParRetiro[]
+  
+  @@map("retiros")
+}
+
+model ParRetiro {
+  id        Int     @id @default(autoincrement())
+  retiroId  Int
+  parId     Int
+  monto     Decimal @db.Decimal(10, 2)
+  retiro    Retiro  @relation(fields: [retiroId], references: [id], onDelete: Cascade)
+  par       Par     @relation(fields: [parId], references: [id])
+  
+  @@map("par_retiros")
+}
+
+model Par {
+  id             Int         @id @default(autoincrement())
+  ingresoId      Int
+  talle          Int
+  depositoId     Int         @default(1)
+  clienteId      Int?
+  disponible     Boolean     @default(true)
+  pagado         String      @default("No pagado") // "No pagado", "Parcial", "Completo"
+  comprador      String?
+  montoTotal     Decimal?    @db.Decimal(10, 2)
+  montoPagado    Decimal?    @db.Decimal(10, 2)
+  montoAcumulado Decimal?    @db.Decimal(10, 2) @default(0)
+  montoRetirado  Decimal?    @db.Decimal(10, 2) @default(0)
+  fechaVenta     DateTime?
+  ingreso        Ingreso     @relation(fields: [ingresoId], references: [id], onDelete: Cascade)
+  deposito       Deposito    @relation(fields: [depositoId], references: [id])
+  cliente        Cliente?    @relation(fields: [clienteId], references: [id])
+  retiros        ParRetiro[]
+  
+  @@map("pares")
+}

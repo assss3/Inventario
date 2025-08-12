@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: inventario_postgres
+    environment:
+      POSTGRES_DB: inventario_zapatillas
+      POSTGRES_USER: inventario_user
+      POSTGRES_PASSWORD: inventario_pass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

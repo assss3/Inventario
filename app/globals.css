@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.par-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.par-item:hover {
+  border-color: #3b82f6;
+  transform: scale(1.05);
+}
+
+.par-item.disponible {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.par-item.no-disponible {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.par-item.pagado-completo {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.par-item.pagado-parcial {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.par-item.pagado-total {
+  background: #fecaca;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.par-item.devolucion {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #6b7280;
+}
