@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import AuthGuard from './components/AuthGuard'
 
 interface Marca {
   id: number
@@ -16,11 +15,15 @@ interface Modelo {
   marcaId: number
 }
 
-export default function Home() {
+export default function Vendedor() {
   const [marcas, setMarcas] = useState<Marca[]>([])
-
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    }
     fetchMarcas()
   }, [])
 
@@ -30,45 +33,37 @@ export default function Home() {
     setMarcas(data)
   }
 
-
+  const handleLogout = () => {
+    localStorage.removeItem('user')
+    window.location.href = '/login'
+  }
 
   return (
-    <AuthGuard requiredRole="admin">
     <div className="space-y-8">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-blue-800">
-          📝 Para crear marcas y modelos, ve a la sección de <a href="/admin" className="font-medium underline hover:text-blue-900">Administración</a>
-        </p>
-      </div>
-      
-      <div className="flex gap-4 justify-center">
-        <a
-          href="/admin"
-          className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors"
-        >
-          Administración
-        </a>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Panel Vendedor</h1>
+          {user && <p className="text-gray-600">Bienvenido, {user.username}</p>}
+        </div>
         
-        <a
-          href="/clientes"
-          className="bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600 transition-colors"
-        >
-          Clientes
-        </a>
-        
-        <button
-          onClick={() => {
-            localStorage.removeItem('user')
-            window.location.href = '/login'
-          }}
-          className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors"
-        >
-          Cerrar Sesión
-        </button>
+        <div className="flex gap-4">
+          <a
+            href="/clientes"
+            className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600"
+          >
+            Clientes
+          </a>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium mb-4">Marcas y Modelos</h2>
+        <h2 className="text-lg font-medium mb-4">Inventario de Zapatillas</h2>
         <div className="space-y-4">
           {marcas.map(marca => (
             <div key={marca.id} className="border rounded p-4">
@@ -89,6 +84,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-    </AuthGuard>
   )
 }

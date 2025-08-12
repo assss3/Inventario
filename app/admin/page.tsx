@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import BackButton from '@/app/components/BackButton'
+import AuthGuard from '@/app/components/AuthGuard'
 
 interface Marca {
   id: number
@@ -30,13 +31,11 @@ interface Deposito {
 export default function Admin() {
   const [marcas, setMarcas] = useState<Marca[]>([])
   const [depositos, setDepositos] = useState<Deposito[]>([])
-  const [clientes, setClientes] = useState<Cliente[]>([])
   const [nuevaMarca, setNuevaMarca] = useState('')
   const [nuevoDeposito, setNuevoDeposito] = useState('')
-  const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', telefono: '', email: '' })
   const [editandoMarca, setEditandoMarca] = useState<Marca | null>(null)
   const [editandoDeposito, setEditandoDeposito] = useState<Deposito | null>(null)
-  const [editandoCliente, setEditandoCliente] = useState<Cliente | null>(null)
+
   const [marcaSeleccionada, setMarcaSeleccionada] = useState<Marca | null>(null)
   const [nuevoModelo, setNuevoModelo] = useState('')
   const [editandoModelo, setEditandoModelo] = useState<Modelo | null>(null)
@@ -46,15 +45,13 @@ export default function Admin() {
   }, [])
 
   const fetchData = async () => {
-    const [marcasRes, depositosRes, clientesRes] = await Promise.all([
+    const [marcasRes, depositosRes] = await Promise.all([
       fetch('/api/marcas'),
-      fetch('/api/depositos'),
-      fetch('/api/clientes')
+      fetch('/api/depositos')
     ])
     const marcasData = await marcasRes.json()
     setMarcas(marcasData)
     setDepositos(await depositosRes.json())
-    setClientes(await clientesRes.json())
     
     // Actualizar marca seleccionada si existe
     if (marcaSeleccionada) {
@@ -85,16 +82,7 @@ export default function Admin() {
     fetchData()
   }
 
-  const crearCliente = async (e: React.FormEvent) => {
-    e.preventDefault()
-    await fetch('/api/clientes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nuevoCliente)
-    })
-    setNuevoCliente({ nombre: '', telefono: '', email: '' })
-    fetchData()
-  }
+
 
   const eliminarMarca = async (id: number, nombre: string) => {
     if (confirm(`¿Estás seguro de que deseas eliminar la marca "${nombre}"?`)) {
@@ -115,27 +103,9 @@ export default function Admin() {
     }
   }
 
-  const eliminarCliente = async (id: number, nombre: string) => {
-    if (confirm(`¿Estás seguro de que deseas eliminar el cliente "${nombre}"?`)) {
-      const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        fetchData()
-      } else {
-        const error = await res.json()
-        alert(error.error)
-      }
-    }
-  }
 
-  const editarCliente = async (id: number, datos: { nombre: string; telefono?: string; email?: string }) => {
-    await fetch(`/api/clientes/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos)
-    })
-    setEditandoCliente(null)
-    fetchData()
-  }
+
+
 
   const editarDeposito = async (id: number, nombre: string) => {
     await fetch(`/api/depositos/${id}`, {
@@ -183,6 +153,7 @@ export default function Admin() {
   }
 
   return (
+    <AuthGuard requiredRole="admin">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -208,6 +179,15 @@ export default function Admin() {
           >
             Ver Deudores
           </a>
+          <button
+            onClick={() => {
+              localStorage.removeItem('user')
+              window.location.href = '/login'
+            }}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Cerrar Sesión
+          </button>
         </div>
       </div>
 
@@ -354,73 +334,18 @@ export default function Admin() {
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-medium mb-4">Gestión de Clientes</h2>
           
-          <form onSubmit={crearCliente} className="space-y-2 mb-4">
-            <input
-              type="text"
-              value={nuevoCliente.nombre}
-              onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})}
-              placeholder="Nombre"
-              className="w-full border rounded px-3 py-2"
-              required
-            />
-            <input
-              type="tel"
-              value={nuevoCliente.telefono}
-              onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})}
-              placeholder="Teléfono (opcional)"
-              className="w-full border rounded px-3 py-2"
-            />
-            <input
-              type="email"
-              value={nuevoCliente.email}
-              onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})}
-              placeholder="Email (opcional)"
-              className="w-full border rounded px-3 py-2"
-            />
-            <button type="submit" className="w-full bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
-              Crear Cliente
-            </button>
-          </form>
-
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {clientes.map(cliente => (
-              <div key={cliente.id} className="border rounded p-3">
-                {editandoCliente?.id === cliente.id ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      defaultValue={cliente.nombre}
-                      className="w-full border rounded px-2 py-1 text-sm"
-                      onBlur={(e) => editarCliente(cliente.id, {
-                        nombre: e.target.value,
-                        telefono: cliente.telefono,
-                        email: cliente.email
-                      })}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <div
-                      onClick={() => setEditandoCliente(cliente)}
-                      className="cursor-pointer hover:bg-gray-50 p-1 rounded"
-                    >
-                      <div className="font-medium">{cliente.nombre}</div>
-                      {cliente.telefono && <div className="text-xs text-gray-600">{cliente.telefono}</div>}
-                      {cliente.email && <div className="text-xs text-gray-600">{cliente.email}</div>}
-                    </div>
-                    <button
-                      onClick={() => eliminarCliente(cliente.id, cliente.nombre)}
-                      className="mt-2 bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 w-full"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="text-center py-8">
+            <p className="text-gray-600 mb-4">La gestión de clientes se ha movido a una sección dedicada</p>
+            <a
+              href="/clientes"
+              className="bg-blue-500 text-white px-6 py-3 rounded hover:bg-blue-600 inline-block"
+            >
+              Ir a Gestión de Clientes
+            </a>
           </div>
         </div>
       </div>
     </div>
+    </AuthGuard>
   )
 }
