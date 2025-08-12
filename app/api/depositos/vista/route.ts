@@ -51,9 +51,11 @@ export async function GET() {
     
     // Convertir Maps a arrays y ordenar talles
     const marcas = Array.from(marcasMap.values()).map(marca => ({
-      ...marca,
+      id: marca.id,
+      nombre: marca.nombre,
       modelos: Array.from(marca.modelos.values()).map(modelo => ({
-        ...modelo,
+        id: modelo.id,
+        nombre: modelo.nombre,
         talles: [...new Set(modelo.talles)].sort((a, b) => a - b)
       }))
     }))
