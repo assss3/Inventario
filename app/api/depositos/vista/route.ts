@@ -53,10 +53,10 @@ export async function GET() {
     const marcas = Array.from(marcasMap.values()).map(marca => ({
       id: marca.id,
       nombre: marca.nombre,
-      modelos: Array.from(marca.modelos.values()).map(modelo => ({
+      modelos: Array.from(marca.modelos.values()).map((modelo: any) => ({
         id: modelo.id,
         nombre: modelo.nombre,
-        talles: [...new Set(modelo.talles)].sort((a, b) => a - b)
+        talles: Array.from(new Set(modelo.talles)).sort((a: any, b: any) => a - b)
       }))
     }))
     

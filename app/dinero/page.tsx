@@ -25,6 +25,7 @@ interface Retiro {
     monto: number
     par: {
       talle: number
+      comprador?: string
       ingreso: {
         modelo: {
           nombre: string
