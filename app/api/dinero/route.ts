@@ -3,8 +3,6 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-export const dynamic = 'force-dynamic'
-
 export async function GET() {
   const pares = await prisma.par.findMany({
     where: {
