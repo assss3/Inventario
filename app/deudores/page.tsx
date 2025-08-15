@@ -9,6 +9,7 @@ interface Deudor {
   comprador: string
   montoTotal: number
   montoPagado: number
+  montoAcumulado: number
   fechaVenta?: string
   ingreso: {
     modelo: {
@@ -34,8 +35,8 @@ export default function Deudores() {
     setDeudores(data)
   }
 
-  const calcularFaltante = (total: number, pagado: number) => {
-    return total - pagado
+  const calcularFaltante = (total: number, acumulado: number) => {
+    return total - acumulado
   }
 
   const actualizarPago = async (parId: number, datos: { montoPagado: number; pagado: string }) => {
@@ -50,8 +51,13 @@ export default function Deudores() {
 
   const marcarComoPagado = (deudor: Deudor, nuevoPago: number) => {
     const total = Number(deudor.montoTotal || 0)
+    const acumuladoActual = Number(deudor.montoAcumulado || 0)
+    const diferencia = nuevoPago - acumuladoActual
+    
+    if (diferencia <= 0) return
+    
     const pagado = nuevoPago >= total ? 'Completo' : 'Parcial'
-    actualizarPago(deudor.id, { montoPagado: nuevoPago, pagado })
+    actualizarPago(deudor.id, { montoPagado: diferencia, pagado })
   }
 
   return (
@@ -111,10 +117,10 @@ export default function Deudores() {
                   ${Number(deudor.montoTotal || 0).toFixed(2)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  ${Number(deudor.montoPagado || 0).toFixed(2)}
+                  ${Number(deudor.montoAcumulado || 0).toFixed(2)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
-                  ${calcularFaltante(Number(deudor.montoTotal || 0), Number(deudor.montoPagado || 0)).toFixed(2)}
+                  ${calcularFaltante(Number(deudor.montoTotal || 0), Number(deudor.montoAcumulado || 0)).toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -137,7 +143,7 @@ export default function Deudores() {
           <span className="text-blue-800 font-medium">Monto total adeudado:</span>
           <span className="text-red-600 font-bold">
             ${deudores.reduce((total, deudor) => 
-              total + calcularFaltante(Number(deudor.montoTotal || 0), Number(deudor.montoPagado || 0)), 0
+              total + calcularFaltante(Number(deudor.montoTotal || 0), Number(deudor.montoAcumulado || 0)), 0
             ).toFixed(2)}
           </span>
         </div>
@@ -163,24 +169,24 @@ export default function Deudores() {
                   <strong>Total:</strong> ${Number(deudorSeleccionado.montoTotal || 0).toFixed(2)}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <strong>Pagado actual:</strong> ${Number(deudorSeleccionado.montoPagado || 0).toFixed(2)}
+                  <strong>Pagado actual:</strong> ${Number(deudorSeleccionado.montoAcumulado || 0).toFixed(2)}
                 </p>
                 <p className="text-sm font-medium text-red-600">
                   <strong>Faltante:</strong> ${calcularFaltante(
                     Number(deudorSeleccionado.montoTotal || 0), 
-                    Number(deudorSeleccionado.montoPagado || 0)
+                    Number(deudorSeleccionado.montoAcumulado || 0)
                   ).toFixed(2)}
                 </p>
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2">Nuevo monto pagado</label>
+                <label className="block text-sm font-medium mb-2">Nuevo monto total pagado</label>
                 <input
                   type="number"
                   step="0.01"
-                  min={Number(deudorSeleccionado.montoPagado || 0)}
+                  min={Number(deudorSeleccionado.montoAcumulado || 0)}
                   max={Number(deudorSeleccionado.montoTotal || 0)}
-                  defaultValue={Number(deudorSeleccionado.montoPagado || 0)}
+                  defaultValue={Number(deudorSeleccionado.montoAcumulado || 0)}
                   className="w-full border rounded px-3 py-2"
                   id="nuevoPago"
                 />
@@ -191,7 +197,7 @@ export default function Deudores() {
                   onClick={() => {
                     const input = document.getElementById('nuevoPago') as HTMLInputElement
                     const nuevoPago = parseFloat(input.value)
-                    if (nuevoPago >= Number(deudorSeleccionado.montoPagado || 0)) {
+                    if (nuevoPago >= Number(deudorSeleccionado.montoAcumulado || 0)) {
                       marcarComoPagado(deudorSeleccionado, nuevoPago)
                     }
                   }}
