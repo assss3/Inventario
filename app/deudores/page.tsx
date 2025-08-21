@@ -10,6 +10,7 @@ interface Deudor {
   montoTotal: number
   montoPagado: number
   montoAcumulado: number
+  clienteId?: number
   fechaVenta?: string
   ingreso: {
     modelo: {
@@ -39,17 +40,7 @@ export default function Deudores() {
     return total - acumulado
   }
 
-  const actualizarPago = async (parId: number, datos: { montoPagado: number; pagado: string }) => {
-    await fetch(`/api/pares/${parId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos)
-    })
-    fetchDeudores()
-    setDeudorSeleccionado(null)
-  }
-
-  const marcarComoPagado = (deudor: Deudor, nuevoPago: number) => {
+  const actualizarPago = async (deudor: Deudor, nuevoPago: number) => {
     const total = Number(deudor.montoTotal || 0)
     const acumuladoActual = Number(deudor.montoAcumulado || 0)
     const diferencia = nuevoPago - acumuladoActual
@@ -57,7 +48,20 @@ export default function Deudores() {
     if (diferencia <= 0) return
     
     const pagado = nuevoPago >= total ? 'Completo' : 'Parcial'
-    actualizarPago(deudor.id, { montoPagado: diferencia, pagado })
+    
+    await fetch(`/api/pares/${deudor.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        montoPagado: diferencia,
+        pagado,
+        comprador: deudor.comprador,
+        clienteId: deudor.clienteId,
+        disponible: false // Mantener como no disponible ya que está vendido
+      })
+    })
+    fetchDeudores()
+    setDeudorSeleccionado(null)
   }
 
   return (
@@ -198,7 +202,7 @@ export default function Deudores() {
                     const input = document.getElementById('nuevoPago') as HTMLInputElement
                     const nuevoPago = parseFloat(input.value)
                     if (nuevoPago >= Number(deudorSeleccionado.montoAcumulado || 0)) {
-                      marcarComoPagado(deudorSeleccionado, nuevoPago)
+                      actualizarPago(deudorSeleccionado, nuevoPago)
                     }
                   }}
                   className="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600"
@@ -208,7 +212,7 @@ export default function Deudores() {
                 <button
                   onClick={() => {
                     const total = Number(deudorSeleccionado.montoTotal || 0)
-                    marcarComoPagado(deudorSeleccionado, total)
+                    actualizarPago(deudorSeleccionado, total)
                   }}
                   className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
                 >

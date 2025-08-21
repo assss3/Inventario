@@ -23,7 +23,8 @@ export async function GET() {
             }
           }
         }
-      }
+      },
+      cliente: true
     },
     orderBy: {
       fechaVenta: 'desc'
